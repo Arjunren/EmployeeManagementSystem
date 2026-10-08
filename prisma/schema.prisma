@@ -1,0 +1,95 @@
+generator client {
+  provider = "prisma-client"
+  output = "../generated/prisma"
+}
+datasource db {
+  provider = "postgresql"
+}
+enum Role {
+  ADMIN
+  HR
+  MANAGER
+  EMPLOYEE
+}
+enum EmploymentStatus {
+  ACTIVE
+  ON_LEAVE
+  INACTIVE
+}
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+model Department {
+  id String @id @default(cuid())
+  name String @unique
+  costCenter String @unique
+  employees Employee[]
+  createdAt DateTime @default(now())
+}
+model Employee {
+  id String @id @default(cuid())
+  employeeNumber String @unique
+  name String
+  email String @unique
+  passwordHash String
+  role Role @default(EMPLOYEE)
+  jobTitle String
+  status EmploymentStatus @default(ACTIVE)
+  startDate DateTime
+  leaveAllowance Int @default(20)
+  departmentId String
+  managerId String?
+  department Department @relation(fields:[departmentId],references:[id],onDelete:Restrict)
+  manager Employee? @relation("ManagerReports",fields:[managerId],references:[id],onDelete:SetNull)
+  reports Employee[] @relation("ManagerReports")
+  leaveRequests LeaveRequest[] @relation("LeaveOwner")
+  reviewedLeave LeaveRequest[] @relation("LeaveReviewer")
+  attendance Attendance[]
+  sessions Session[]
+  active Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([departmentId])
+  @@index([managerId])
+  @@index([status])
+}
+model Session {
+  id String @id @default(cuid())
+  tokenHash String @unique
+  employeeId String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  employee Employee @relation(fields:[employeeId],references:[id],onDelete:Cascade)
+  @@index([employeeId])
+  @@index([expiresAt])
+}
+model LeaveRequest {
+  id String @id @default(cuid())
+  employeeId String
+  reviewerId String?
+  startDate DateTime
+  endDate DateTime
+  days Int
+  reason String
+  status LeaveStatus @default(PENDING)
+  reviewedAt DateTime?
+  employee Employee @relation("LeaveOwner",fields:[employeeId],references:[id],onDelete:Cascade)
+  reviewer Employee? @relation("LeaveReviewer",fields:[reviewerId],references:[id],onDelete:SetNull)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([employeeId,status])
+  @@index([reviewerId])
+}
+model Attendance {
+  id String @id @default(cuid())
+  employeeId String
+  workDate DateTime @db.Date
+  clockIn DateTime?
+  clockOut DateTime?
+  employee Employee @relation(fields:[employeeId],references:[id],onDelete:Cascade)
+  @@unique([employeeId,workDate])
+  @@index([workDate])
+}
